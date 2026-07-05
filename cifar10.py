@@ -20,16 +20,23 @@ Things I tried that didn't work as well:
 """
 
 import time
+
 import torch
 import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import DataLoader, Subset
 import torchvision
+
 import torchvision.transforms as transforms
 import matplotlib.pyplot as plt
+
+
+
+
 BATCH_SIZE = 128
 LEARNING_RATE = 0.003
 WEIGHT_DECAY = 1e-4
+
 EPOCHS = 15
 DEVICE = torch.device('cpu')
 
@@ -59,6 +66,7 @@ test_transform = transforms.Compose([
 
 # download cifar10 and only use 20k for training
 full_train_set = torchvision.datasets.CIFAR10(root='./data', train=True, download=True, transform=train_transform)
+
 full_test_set = torchvision.datasets.CIFAR10(root='./data', train=False, download=True, transform=test_transform)
 
 
@@ -72,6 +80,7 @@ test_subset = Subset(full_test_set, list(range(10000)))
 
 
 train_loader = DataLoader(train_subset, batch_size=BATCH_SIZE, shuffle=True, num_workers=2)
+
 test_loader = DataLoader(test_subset, batch_size=BATCH_SIZE, shuffle=False, num_workers=2)
 
 
@@ -131,7 +140,11 @@ class ResNet9(nn.Module):
         out = self.prep(x)
         out = self.layer1(out)
         out = out + self.res1(out)      # skip connection - this is the key idea from ResNet
+
+      
         out = self.layer2(out)
+
+      
         out = self.layer3(out)
         out = out + self.res2(out)      # second skip connection
         out = self.classifier(out)
@@ -155,11 +168,21 @@ optimizer = optim.AdamW(model.parameters(), lr=LEARNING_RATE, weight_decay=WEIGH
 
 # slowly lowers lr over training so it doesn't overshoot near the end
 # learned about this from: https://pytorch.org/docs/stable/generated/torch.optim.lr_scheduler.CosineAnnealingLR.html
+
+
+
+
+
+
 scheduler = optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=EPOCHS)
+
+
+
 
 # for graphing later
 train_losses = []
 train_accs = []
+
 test_losses = []
 test_accs = []
 
@@ -169,6 +192,8 @@ for epoch in range(EPOCHS):
 
     model.train()
     running_loss = 0.0
+
+  
     correct = 0
     total = 0
 
@@ -178,12 +203,17 @@ for epoch in range(EPOCHS):
         optimizer.zero_grad()
         outputs = model(images)
         loss = criterion(outputs, labels)
+
+
+      
         loss.backward()
         optimizer.step()
 
         running_loss += loss.item() * images.size(0)
         _, predicted = outputs.max(1)
         total += labels.size(0)
+
+      
         correct += predicted.eq(labels).sum().item()
 
     scheduler.step()
@@ -199,27 +229,38 @@ for epoch in range(EPOCHS):
 
     with torch.no_grad():
         for images, labels in test_loader:
+          
             images, labels = images.to(DEVICE), labels.to(DEVICE)
             outputs = model(images)
+          
             loss = criterion(outputs, labels)
 
             test_loss += loss.item() * images.size(0)
             _, predicted = outputs.max(1)
+          
             test_total += labels.size(0)
             test_correct += predicted.eq(labels).sum().item()
 
     epoch_test_loss = test_loss / test_total
     epoch_test_acc = (test_correct / test_total) * 100
 
+
+
+  
     elapsed = time.time() - start
+
+
+  
 
     train_losses.append(epoch_train_loss)
     train_accs.append(epoch_train_acc)
+  
     test_losses.append(epoch_test_loss)
+  
     test_accs.append(epoch_test_acc)
 
     print(f"Epoch {epoch+1}/{EPOCHS} ({elapsed:.1f}s) - "
-          f"Train Loss: {epoch_train_loss:.4f}, Train Acc: {epoch_train_acc:.2f}% | "
+        f"Train Loss: {epoch_train_loss:.4f}, Train Acc: {epoch_train_acc:.2f}% | "
           f"Test Loss: {epoch_test_loss:.4f}, Test Acc: {epoch_test_acc:.2f}%")
 
 print("\nDone!")
@@ -228,17 +269,26 @@ print("\nDone!")
 fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(14, 5))
 
 ax1.plot(range(1, EPOCHS + 1), train_losses, label='Train Loss', marker='o')
+
 ax1.plot(range(1, EPOCHS + 1), test_losses, label='Test Loss', marker='o')
+
+
+
 ax1.set_title('Loss')
 ax1.set_xlabel('Epoch')
+
+
 ax1.set_ylabel('Loss')
 ax1.legend()
 ax1.grid(True, alpha=0.3)
 
 ax2.plot(range(1, EPOCHS + 1), train_accs, label='Train Acc', marker='o')
+
 ax2.plot(range(1, EPOCHS + 1), test_accs, label='Test Acc', marker='o')
 ax2.set_title('Accuracy')
 ax2.set_xlabel('Epoch')
+
+
 ax2.set_ylabel('Accuracy (%)')
 ax2.legend(loc='lower right')
 ax2.grid(True, alpha=0.3)
